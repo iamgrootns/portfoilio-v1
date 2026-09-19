@@ -28,6 +28,10 @@ function inferModality(file: File): Modality | null {
   return null
 }
 
+function humanizeReason(r: string) {
+  return r.replace(/C2PA\s*\/\s*JUMBF/gi, 'metadata').replace(/\bC2PA\b/gi, 'metadata').replace(/\bJUMBF\b/gi, 'metadata')
+}
+
 function bytesLabel(n: number) {
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
@@ -364,7 +368,7 @@ export default function Fake() {
                 {result.reasons.map((r) => (
                   <li key={r}>
                     <span className="t">→</span>
-                    <span>{r}</span>
+                    <span>{humanizeReason(r)}</span>
                     <span />
                   </li>
                 ))}
