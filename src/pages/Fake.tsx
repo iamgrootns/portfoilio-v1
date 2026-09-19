@@ -245,7 +245,7 @@ export default function Fake() {
           <div className={`verdict ${tone}`}>{sub}</div>
           {result.provenance?.claim_generator || result.provenance?.software_agent ? (
             <p className="kicker" style={{ marginTop: '0.85rem' }}>
-              <span>GENERATOR</span>
+              <span>METADATA CHECK</span>
               {result.provenance.claim_generator || result.provenance.software_agent}
             </p>
           ) : null}
@@ -354,45 +354,6 @@ export default function Fake() {
                   </li>
                 ))}
               </ul>
-            </div>
-          ) : null}
-
-          {result.provenance &&
-          (result.provenance.claim_generator ||
-            result.provenance.software_agent ||
-            result.provenance.digital_source_type ||
-            (result.provenance.jumbf_summary && Object.keys(result.provenance.jumbf_summary).length)) ? (
-            <div className="check-block">
-              <div className="field-label">C2PA / JUMBF</div>
-              <dl className="facts">
-                {result.provenance.claim_generator ? (
-                  <div>
-                    <dt>Claim generator</dt>
-                    <dd>{result.provenance.claim_generator}</dd>
-                  </div>
-                ) : null}
-                {result.provenance.software_agent ? (
-                  <div>
-                    <dt>Software agent</dt>
-                    <dd>{result.provenance.software_agent}</dd>
-                  </div>
-                ) : null}
-                {result.provenance.digital_source_type ? (
-                  <div>
-                    <dt>Digital source</dt>
-                    <dd>{String(result.provenance.digital_source_type).split('/').pop()}</dd>
-                  </div>
-                ) : null}
-                {Object.entries(result.provenance.jumbf_summary || {})
-                  .filter(([, v]) => v != null && v !== '')
-                  .slice(0, 6)
-                  .map(([k, v]) => (
-                    <div key={k}>
-                      <dt>{k.replace('JUMBF:', '')}</dt>
-                      <dd>{String(v)}</dd>
-                    </div>
-                  ))}
-              </dl>
             </div>
           ) : null}
 
