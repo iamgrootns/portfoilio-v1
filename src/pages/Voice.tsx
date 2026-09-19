@@ -43,7 +43,7 @@ export default function Voice() {
     setResult(null)
     try {
       const [b64a, b64b] = await Promise.all([fileToB64(a), fileToB64(b)])
-      setResult(await callRunpod<VoiceResult>('voice', { file1_base64: b64a, file1_name: a.name, file2_base64: b64b, file2_name: b.name }))
+      setResult(await callRunpod<VoiceResult>('voice', { file1_base64: b64a, filename1: a.name, file2_base64: b64b, filename2: b.name }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {
