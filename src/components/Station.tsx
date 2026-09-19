@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { Station as StationMeta } from '../data/stations'
-import { useEngine } from '../lib/engine'
 
 export default function Station({
   meta,
@@ -9,8 +8,6 @@ export default function Station({
   meta: StationMeta
   children: ReactNode
 }) {
-  const { online, checked } = useEngine()
-
   return (
     <article>
       {meta.media ? (
@@ -29,11 +26,6 @@ export default function Station({
         <p className="station-deck">{meta.deck}</p>
         <p className="station-model">{meta.model}</p>
       </header>
-      {checked && !online ? (
-        <div className="banner">
-          Engine is off. Start the API on port 8000 — the page will pick it up.
-        </div>
-      ) : null}
       {children}
     </article>
   )
