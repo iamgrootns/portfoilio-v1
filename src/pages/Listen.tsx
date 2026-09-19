@@ -2,7 +2,8 @@ import { useState } from 'react'
 import DropZone from '../components/DropZone'
 import Station from '../components/Station'
 import { stations } from '../data/stations'
-import { postForm, type SpeechResult } from '../lib/api'
+import { type SpeechResult } from '../lib/api'
+import { callRunpod, fileToB64 } from '../lib/runpod'
 import { useElapsed } from '../lib/engine'
 
 const meta = stations[0]
@@ -20,9 +21,8 @@ export default function Listen() {
     setError('')
     setResult(null)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      setResult(await postForm<SpeechResult>('/speech/detect-language-remote', form))
+      const file_base64 = await fileToB64(file)
+      setResult(await callRunpod<SpeechResult>('lang', { file_base64, filename: file.name }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {

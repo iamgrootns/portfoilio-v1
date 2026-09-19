@@ -6,11 +6,11 @@ import {
   fetchAsFile,
   pageNumberOf,
   pageTextOf,
-  postForm,
   type EntityBag,
   type OcrPage,
   type ReadResult,
 } from '../lib/api'
+import { callRunpod, fileToB64 } from '../lib/runpod'
 import { useElapsed } from '../lib/engine'
 
 const meta = stations[4]
@@ -51,16 +51,9 @@ export default function Read() {
     setError('')
     setResult(null)
     try {
-      const form = new FormData()
-      if (kind === 'ocr') {
-        form.append('files', file)
-        form.append('prefered_language', language)
-        setResult(await postForm<ReadResult>('/ocr/upload_and_process/', form))
-      } else {
-        form.append('files', file)
-        form.append('prefered_language', language.startsWith('mix') ? 'hi' : language)
-        setResult(await postForm<ReadResult>('/pdf/highlight_entities', form))
-      }
+      const file_base64 = await fileToB64(file)
+      const alias = 'ocr'
+      setResult(await callRunpod<ReadResult>(alias, { file_base64, filename: file.name, prefered_language: kind === 'ocr' ? language : (language.startsWith('mix') ? 'hi' : language) }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {

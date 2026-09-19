@@ -2,7 +2,8 @@ import { useState } from 'react'
 import DropZone from '../components/DropZone'
 import Station from '../components/Station'
 import { stations } from '../data/stations'
-import { postForm, type VoiceResult } from '../lib/api'
+import { type VoiceResult } from '../lib/api'
+import { callRunpod, fileToB64 } from '../lib/runpod'
 import { useElapsed } from '../lib/engine'
 
 const meta = stations[1]
@@ -41,10 +42,8 @@ export default function Voice() {
     setError('')
     setResult(null)
     try {
-      const form = new FormData()
-      form.append('file1', a)
-      form.append('file2', b)
-      setResult(await postForm<VoiceResult>('/voice/compare', form))
+      const [b64a, b64b] = await Promise.all([fileToB64(a), fileToB64(b)])
+      setResult(await callRunpod<VoiceResult>('voice', { file1_base64: b64a, file1_name: a.name, file2_base64: b64b, file2_name: b.name }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {
