@@ -1,11 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { profile } from '../data/profile'
 import { stations } from '../data/stations'
-import { useEngine } from '../lib/engine'
 
 export default function Nav() {
-  const { online, checked } = useEngine()
-
   return (
     <div className="pill-wrap">
       <nav className="pill">
@@ -21,9 +18,9 @@ export default function Nav() {
         <NavLink to="/about">About</NavLink>
         <NavLink to="/notes">Notes</NavLink>
         <div className="pill-div" />
-        <span className={`engine ${checked ? (online ? 'on' : 'off') : ''}`}>
+        <span className="engine on">
           <i />
-          {checked ? (online ? 'Live' : 'Off') : '…'}
+          Cloud
         </span>
       </nav>
     </div>
