@@ -394,17 +394,6 @@ export default function Fake() {
                   ))}
               </dl>
             </div>
-          ) : result.metadata?.length ? (
-            <div className="check-block">
-              <div className="field-label">Provenance tags</div>
-              <div>
-                {result.metadata.map((t) => (
-                  <span className="chip" key={t}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
           ) : null}
 
           {result.reasons?.length ? (
