@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import DropZone from '../components/DropZone'
 import Station from '../components/Station'
 import { stations } from '../data/stations'
-import { fetchAsFile, postForm, type FakeCheck, type FakeResult } from '../lib/api'
+import { fetchAsFile, type FakeCheck, type FakeResult } from '../lib/api'
+import { callRunpod, fileToB64 } from '../lib/runpod'
 import { useElapsed } from '../lib/engine'
 
 const meta = stations.find((s) => s.id === 'fake') ?? stations[0]
@@ -174,10 +175,8 @@ export default function Fake() {
     setError('')
     setResult(null)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('modality', kind)
-      setResult(await postForm<FakeResult>('/deepfake/analyze', form))
+      const file_base64 = await fileToB64(file)
+      setResult(await callRunpod<FakeResult>(kind, { file_base64, filename: file.name }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {
