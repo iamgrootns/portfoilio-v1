@@ -7,10 +7,13 @@ async function callOnce(alias: string, payload: Record<string, unknown>): Promis
 }
 
 export async function callRunpod<T>(alias: string, payload: Record<string, unknown>): Promise<T> {
+  // A cold RunPod worker can still be booting when the edge connection
+  // idles out (~30s). Each retry is a fresh connection, so retrying keeps
+  // landing on the now-warmer worker until this budget runs out.
+  const budgetMs = alias === "video" ? 120_000 : 60_000;
+  const start = Date.now();
   let res = await callOnce(alias, payload);
-  if (!res.ok && (res.status === 502 || res.status === 504)) {
-    // A cold RunPod worker can still be booting when the edge connection
-    // idles out. One quick retry usually lands on the now-warm worker.
+  while (!res.ok && (res.status === 502 || res.status === 504) && Date.now() - start < budgetMs) {
     await new Promise((r) => setTimeout(r, 1500));
     res = await callOnce(alias, payload);
   }
