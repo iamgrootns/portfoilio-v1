@@ -1,4 +1,4 @@
-export type StationId = 'listen' | 'voice' | 'face' | 'read' | 'fake'
+export type StationId = 'listen' | 'voice' | 'face' | 'read' | 'fake' | 'clone'
 
 export type Station = {
   id: StationId
@@ -61,5 +61,16 @@ export const stations: Station[] = [
     model: 'DFDS · cloud',
     deck: 'Real or generated? Drop an image, a voice clip, or a video. The lab routes it.',
     media: '/media/fake.mp4',
+  },
+  {
+    id: 'clone',
+    num: '06',
+    path: '/lab/clone',
+    title: 'Voice Cloning',
+    kicker: 'Synthesis',
+    model: 'OpenVoice V2 + MeloTTS · CPU',
+    deck: 'A few seconds of someone speaking, and a line of text. The engine says it back in their voice.',
+    // No dedicated clip shot for this station yet — borrowing the voice loop.
+    media: '/media/voice.mp4',
   },
 ]

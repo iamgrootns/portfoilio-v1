@@ -2,6 +2,7 @@ import { AnimatePresence } from 'framer-motion'
 import { useCallback, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Loader from './components/Loader'
+import Clone from './pages/Clone'
 import Cover from './pages/Cover'
 import Face from './pages/Face'
 import Fake from './pages/Fake'
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="voice" element={<Voice />} />
           <Route path="face" element={<Face />} />
           <Route path="read" element={<Read />} />
+          <Route path="clone" element={<Clone />} />
         </Route>
         <Route path="/about" element={<Lab />}>
           <Route index element={<About />} />

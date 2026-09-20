@@ -115,6 +115,13 @@ export type FaceResult = {
   matches: FaceHit[]
 }
 
+export type CloneResult = {
+  audio_base64: string
+  sample_rate: number
+  target_lang: string
+  model: string
+}
+
 export type FakeFrame = {
   frame_number: number
   timestamp: string

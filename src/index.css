@@ -917,8 +917,22 @@ label.btn {
   border-radius: 999px;
 }
 
+.textarea {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  outline: none;
+  width: 100%;
+  resize: vertical;
+  /* Square, unlike the pill inputs — a multiline box reads wrong as a pill. */
+  border-radius: 6px;
+}
+
 .text-input:focus,
-.select:focus {
+.select:focus,
+.textarea:focus {
   border-color: #89aacc;
 }
 

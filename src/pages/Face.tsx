@@ -2,8 +2,9 @@ import { useState } from 'react'
 import DropZone from '../components/DropZone'
 import Station from '../components/Station'
 import { stations } from '../data/stations'
-import { fetchAsFile, postForm, type FaceResult } from '../lib/api'
+import { fetchAsFile, type FaceResult } from '../lib/api'
 import { useElapsed } from '../lib/engine'
+import { callRunpod, fileToB64 } from '../lib/runpod'
 
 const meta = stations[2]
 
@@ -35,10 +36,18 @@ export default function Face() {
     setError('')
     setResult(null)
     try {
-      const form = new FormData()
-      form.append('photo', photo)
-      form.append('video', video)
-      setResult(await postForm<FaceResult>('/face/in-video', form))
+      const [photo_base64, video_base64] = await Promise.all([
+        fileToB64(photo),
+        fileToB64(video),
+      ])
+      setResult(
+        await callRunpod<FaceResult>('face', {
+          photo_base64,
+          video_base64,
+          photo_filename: photo.name,
+          video_filename: video.name,
+        }),
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {

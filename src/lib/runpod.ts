@@ -10,7 +10,14 @@ export async function callRunpod<T>(alias: string, payload: Record<string, unkno
   // A cold RunPod worker can still be booting when the edge connection
   // idles out (~30s). Each retry is a fresh connection, so retrying keeps
   // landing on the now-warmer worker until this budget runs out.
-  const budgetMs = alias === "video" ? 120_000 : 60_000;
+  // face loads InsightFace buffalo_l and voiceclone loads two TTS stacks, so
+  // both can spend ~70s+ on a cold start before the first frame of real work.
+  const budgets: Record<string, number> = {
+    video: 120_000,
+    face: 180_000,
+    voiceclone: 180_000,
+  };
+  const budgetMs = budgets[alias] ?? 60_000;
   const start = Date.now();
   let res = await callOnce(alias, payload);
   while (!res.ok && (res.status === 502 || res.status === 504) && Date.now() - start < budgetMs) {

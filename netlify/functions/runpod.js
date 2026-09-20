@@ -11,6 +11,8 @@ export default async (req) => {
     video: process.env.RUNPOD_VIDEO_ENDPOINT,
     ocr: process.env.RUNPOD_OCR_ENDPOINT,
     read: process.env.RUNPOD_OCR_ENDPOINT,
+    face: process.env.RUNPOD_FACE_ENDPOINT,
+    voiceclone: process.env.RUNPOD_VOICECLONE_ENDPOINT,
   };
   let body;
   try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 }); }
