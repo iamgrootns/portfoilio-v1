@@ -1,10 +1,57 @@
+// Netlify cuts an idle connection at ~30s, so this function must never hold
+// one open waiting on RunPod. Anything slower than that (face-match is ~70s
+// cold) used to die here: the caller got Netlify's HTML timeout page, and
+// because the client retried by POSTing the whole payload again, each retry
+// submitted a *new* RunPod job instead of reattaching to the pending one.
+//
+// So submit and poll are separate round trips. A submit waits only briefly,
+// long enough that quick jobs still come back in one call, then hands the
+// caller a jobId to poll with.
+const SUBMIT_WAIT_MS = 12_000;
+const POLL_EVERY_MS = 2_000;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function json(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// One status read, mapped onto this function's response contract.
+async function readJob(endpointId, jobId, key) {
+  const res = await fetch(`https://api.runpod.ai/v2/${endpointId}/status/${jobId}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  const body = await res.json().catch(() => ({}));
+
+  if (body.status === "COMPLETED") {
+    const out = body.output || {};
+    out.execution_ms = body.executionTime;
+    out.cloud = true;
+    return { done: true, response: json(out) };
+  }
+  if (body.status === "FAILED" || body.status === "CANCELLED" || body.status === "TIMED_OUT") {
+    return {
+      done: true,
+      response: json({ error: body.error || `Job ${body.status}`, detail: body }, 502),
+    };
+  }
+  return { done: false, status: body.status };
+}
+
 export default async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+
   const key = process.env.RUNPOD_API_KEY;
-  if (!key) return new Response(JSON.stringify({ error: "Server not configured" }), { status: 503 });
+  if (!key) return json({ error: "Server not configured" }, 503);
+
   const map = {
     lang: process.env.RUNPOD_LANG_ENDPOINT,
-    transcribe: process.env.RUNPOD_TRANSCRIBE_ENDPOINT || process.env.RUNPOD_LANG_ENDPOINT,
+    // No fallback to lang: the transcribe worker has never been deployed, and
+    // quietly answering with language-only JSON is worse than a clear 400.
+    transcribe: process.env.RUNPOD_TRANSCRIBE_ENDPOINT,
     voice: process.env.RUNPOD_VOICE_ENDPOINT,
     image: process.env.RUNPOD_IMAGE_ENDPOINT,
     audio: process.env.RUNPOD_AUDIO_ENDPOINT,
@@ -14,46 +61,58 @@ export default async (req) => {
     face: process.env.RUNPOD_FACE_ENDPOINT,
     voiceclone: process.env.RUNPOD_VOICECLONE_ENDPOINT,
   };
+
   let body;
-  try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 }); }
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON" }, 400);
+  }
+
   const alias = (body.alias || body.task || "").toLowerCase();
   const endpointId = map[alias];
-  if (!endpointId) return new Response(JSON.stringify({ error: `Unknown alias: ${alias}` }), { status: 400 });
+  if (!endpointId) return json({ error: `Unknown alias: ${alias}` }, 400);
+
+  // Poll mode — the caller already has a job running, so just report on it.
+  if (body.jobId) {
+    const { done, response, status } = await readJob(endpointId, body.jobId, key);
+    return done ? response : json({ pending: true, jobId: body.jobId, status }, 202);
+  }
+
+  // Submit mode.
   const input = { ...body };
-  delete input.alias; delete input.task;
-  // Normalize file field names for RunPod handlers
-  // Frontend sends file_base64/file1_base64/file2_base64 uniformly; RunPod lang expects audio_base64
+  delete input.alias;
+  delete input.task;
   if (alias === "lang" && input.file_base64 && !input.audio_base64) input.audio_base64 = input.file_base64;
   if (alias === "transcribe" && input.file_base64 && !input.audio_base64) input.audio_base64 = input.file_base64;
   if (alias === "voice") {
-    // Voice handler expects two files; keep both naming styles
     if (input.file1_base64 && !input.audio1_base64) input.audio1_base64 = input.file1_base64;
     if (input.file2_base64 && !input.audio2_base64) input.audio2_base64 = input.file2_base64;
   }
+
   const runRes = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ input }),
   });
   const runJson = await runRes.json().catch(() => ({}));
-  if (!runRes.ok || !runJson.id) return new Response(JSON.stringify({ error: runJson.error || "Run failed", detail: runJson }), { status: 502 });
-  const jobId = runJson.id;
-  const deadline = Date.now() + 58_000;
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 3000));
-    const sRes = await fetch(`https://api.runpod.ai/v2/${endpointId}/status/${jobId}`, { headers: { Authorization: `Bearer ${key}` } });
-    const sJson = await sRes.json().catch(() => ({}));
-    const st = sJson.status;
-    if (st === "COMPLETED") {
-      const out = sJson.output || {};
-      out.execution_ms = sJson.executionTime;
-      out.cloud = true;
-      return new Response(JSON.stringify(out), { headers: { "Content-Type": "application/json" } });
-    }
-    if (st === "FAILED" || st === "CANCELLED" || st === "TIMED_OUT") {
-      return new Response(JSON.stringify({ error: sJson.error || `Job ${st}`, detail: sJson }), { status: 502 });
-    }
+  if (!runRes.ok || !runJson.id) {
+    return json({ error: runJson.error || "Run failed", detail: runJson }, 502);
   }
-  return new Response(JSON.stringify({ error: "RunPod job timed out (still IN_QUEUE/IN_PROGRESS). Try again — worker is still booting.", jobId }), { status: 504 });
+
+  const jobId = runJson.id;
+  const deadline = Date.now() + SUBMIT_WAIT_MS;
+  let last;
+  while (Date.now() < deadline) {
+    await sleep(POLL_EVERY_MS);
+    const { done, response, status } = await readJob(endpointId, jobId, key);
+    if (done) return response;
+    last = status;
+  }
+
+  // Still going. Returning the id is what lets the client keep waiting without
+  // ever re-submitting the job.
+  return json({ pending: true, jobId, status: last }, 202);
 };
+
 export const config = { path: "/api/runpod" };
